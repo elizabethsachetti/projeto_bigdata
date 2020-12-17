@@ -1,0 +1,129 @@
+
+*** Iniciar o Hadoop, Yarn, Hive, hdfs - Zeppelin ***
+*** GitHub INICIO ***
+
+* Hadoop - Iniciar 
+source hadoop_vars.sh
+export HADOOP_HOME=$HOME/hadoop
+yarn --daemon start resourcemanager
+yarn --daemon start nodemanager
+yarn --daemon start timelineserver
+hdfs --daemon start namenode
+hdfs --daemon start datanode
+
+* Hive - Iniciar o Hive
+export HIVE_HOME=$PWD/apache-hive-3.1.2-bin
+cd $HIVE_HOME/hiveserver2
+
+* Na crição do Hive/Instalação
+hdfs dfs -mkdir -p /ricardo/hive/warehouse
+hdfs dfs -chmod g+w /ricardo/hive/warehouse
+mkdir $HIVE_HOME/hiveserver2
+cd $HIVE_HOME/hiveserver2
+
+* SE DER ERRO AO CONECTAR NO beeline => RODAR A PARTIR DAQUI NOVAMENTE <===== 
+$HIVE_HOME/bin/schematool -dbType derby -initSchema
+nohup $HIVE_HOME/bin/hive --service hiveserver2 \
+--hiveconf hive.security.authorization.createtable.owner.grants=ALL \
+--hiveconf hive.root.logger=INFO,console &
+
+* Criar o arquivo do dataSet no hdfs
+* Fazer o download manualmente
+https://s3-sa-east-1.amazonaws.com/ckan.saude.gov.br/SRAG/2020/INFLUD-30-11-2020.csv
+
+hdfs dfs -mkdir -p bigdata/dataset
+hdfs dfs -put INFLUD-30-11-2020.csv bigdata/dataset
+
+* Verifica se o arquivo está diponivel no hdfs
+hadoop fs -ls bigdata/dataset
+
+* Hive - Iniciar o beeline
+$HIVE_HOME/bin/beeline
+
+* Hive - No beeline
+Beeline version 3.1.2 by Apache Hive
+beeline> !connect jdbc:hive2://localhost:10000
+
+* Ou conectar com ricardo e meu usuário
+$HIVE_HOME/bin/beeline -n ricardo -u jdbc:hive2://localhost:10000
+
+Usuario local do ubuntu
+Usuario: ricardo
+Senha: 123
+
+* Hive - Beeline - Teste
+show databases;
+
+* Cria DataBase
+CREATE DATABASE bikeshare
+
+* Configurar o executor dos jobs para usar mapreduce/yarn
+SET hive.execution.engine=mr;
+SET mapreduce.framework.name=yarn;
+
+* Zeppelin - Iniciar o Zeppelin
+export ZEPPELIN_HOME=/home/ricardo/zeppelin-0.8.2-bin-all
+$ZEPPELIN_HOME/bin/zeppelin-daemon.sh start
+
+* Configura o Zeppelin com interpreter do Hive
+* Urls de acessos ao Zeppelin
+http://localhost:8080/
+http://localhost:8080/#/interpreter
+
+1 - Criar um interpreter com nome de Hive
+default.driver 	     	     => org.apache.hive.jdbc.HiveDriver
+default.splitQueries 	     => true
+default.url          	     => jdbc:hive2://localhost:10000
+default.user (Usuario local) => ricardo
+artifact		     => /home/ricardo/apache-hive-3.1.2-bin/jdbc/hive-jdbc-3.1.2-standalone.jar
+
+
+*** GitHub FIM ***
+*************************************
+
+wget -c https://tinyurl.com/y5roz8kz -O stations.csv
+hdfs dfs -mkdir -p bikeshare/stations
+hdfs dfs -put stations.csv bikeshare/stations
+wget -c https://tinyurl.com/y6ln8smc -O trips.csv.zip
+unzip trips.csv.zip
+hdfs dfs -mkdir -p bikeshare/trips
+hdfs dfs -put trips.csv bikeshare/trips
+
+* Remover os diretórios criados e conteúdo no HDFS
+hdfs dfs -rm -R /user/hadoop/gutenberg
+
+hdfs dfs -rm -R bikeshare/stations
+hdfs dfs -rm -R bikeshare/trips
+hdfs dfs -rm -R bigdata/dataset
+
+hdfs dfs -rm -R /user/hive/warehouse
+hdfs dfs -rm -R /user/hive/warehouse
+
+* Obtem o arquivo de hdfs
+hdfs dfs -get bikeshare/stations
+hdfs dfs -get bikeshare/trips
+
+* Verifica se o arquivo está diponivel no hdfs
+hadoop fs -ls bikeshare/stations
+
+hadoop fs -ls bigdata/dataset
+hdfs dfs -get bigdata/dataset
+
+INFLUD-30-11-2020.csv
+
+DROP TABLE stations;
+DROP TABLE trips;
+
+DROP TABLE tripsteste_a;
+DROP TABLE tripsteste_b;
+DROP TABLE tripsteste_d;
+DROP TABLE tripsteste_e;
+
+*************************************
+
+
+
+
+
+
+

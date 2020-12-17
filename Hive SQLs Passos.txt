@@ -1,0 +1,93 @@
+
+* Remove o diretório criado e o conteúdo no HDFS
+hdfs dfs -rm -R bigdata/dataset
+
+* Cria a pasta no HDFS com o INFLUD-30-11-2020.csv
+hdfs dfs -mkdir -p bigdata/dataset
+hdfs dfs -put INFLUD-30-11-2020.csv bigdata/dataset
+
+* Verifica se o arquivo está diponivel no hdfs
+hadoop fs -ls bigdata/dataset
+
+* Cria o DataBase (dentro do beeline)
+CREATE DATABASE bigdata (cuidado que ficou tudo minúsculo em "bigdata")
+
+* Configurar o executor dos jobs para usar mapreduce/yarn
+SET hive.execution.engine=mr;
+SET mapreduce.framework.name=yarn;
+
+* Usa o DataBase
+USE BigData;
+
+CREATE EXTERNAL TABLE dataset (
+DT_NOTIFIC DATE,
+SEM_NOT INT,
+CS_SEXO STRING,
+NU_IDADE_N INT,
+TP_IDADE INT,
+FATOR_RISC STRING,
+CLASSI_FIN INT,
+EVOLUCAO INT,
+DT_EVOLUCA DATE
+)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ';'
+STORED AS TEXTFILE
+LOCATION 'hdfs:///user/hadoop/bigdata/dataset';
+
+*** Se teu usuário for hadoop ^^^
+
+* Perguntas: *
+
+1) Quantidade de infectados por dia.
+Para ser infectado a coluna CLASSI_FIN=5
+A coluna DT_NOTIFIC pode pegar por dia ou 
+a coluna SEM_NOT já mostra qual a semana epidemiológica. 
+
+-- Por Dia
+SELECT DAY(DT_NOTIFIC) AS Dia, COUNT(1) AS QntPorDia
+FROM dataset
+WHERE CLASSI_FIN = 5
+GROUP BY DT_NOTIFIC
+ORDER BY QntPorDia;
+
+2) Quantidade de infectados por semana.
+
+-- Por Semana
+SELECT SEM_NOT AS Semana, COUNT(1) AS QntPorSemana
+FROM dataset
+WHERE CLASSI_FIN = 5
+GROUP BY SEM_NOT
+ORDER BY QntPorSemana;
+
+3) Quantidade de mortos por SRAG por faixa etária/idade
+Pegar a idade em NU_IDADE_N, mas precisa 
+Se TP_IDADE não for 3 quer dizer que tem menos de 1 ano
+Pra saber se morreu EVOLUCAO=2
+
+SELECT NU_IDADE_N AS Idade, COUNT(1) AS Qnt
+FROM dataset
+WHERE EVOLUCAO = 2 AND TP_IDADE = 3
+GROUP BY NU_IDADE_N
+ORDER BY Qnt;
+
+4) Quantidade de mortos por COVID por faixa etária/idade.
+Mesma coisa que a anterior mas adiciona CLASSI_FIN=5 (quer dizer que tem covid)
+
+SELECT NU_IDADE_N AS Idade, COUNT(1) AS Qnt
+FROM dataset
+WHERE EVOLUCAO = 2 AND TP_IDADE = 3 AND CLASSI_FIN = 5
+GROUP BY NU_IDADE_N
+ORDER BY Qnt;
+
+5) Quantidade de mortes por covid por dia.
+Para saber se morreu pegar a coluna EVOLUCAO=2
+Para saber se tem covid coluna CLASSI_FIN=5
+Data da morte da morte DT_EVOLUCA
+
+SELECT DT_EVOLUCA AS DiaDaMorte, COUNT(1) AS QntPorDia
+FROM dataset
+WHERE EVOLUCAO = 2 AND CLASSI_FIN = 5
+GROUP BY DT_EVOLUCA
+ORDER BY QntPorDia;
+
